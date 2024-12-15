@@ -38,13 +38,19 @@ instances:
       - '127.0.0.1'
 EOF
 
-echo "Mendeploy sertifikat untuk komunikasi aman..."
+echo "Menghasilkan Certificate Authority (CA)..."
 cd /usr/share/elasticsearch/
-echo | ./bin/elasticsearch-certutil cert ca --pem --in /etc/elasticsearch/instances.yml --out ~/certs.zip --keep-ca-key
+./bin/elasticsearch-certutil ca --pem --out ~/elastic-stack-ca.zip
+unzip ~/elastic-stack-ca.zip -d ~/ca
+
+echo "Menghasilkan sertifikat menggunakan CA..."
+./bin/elasticsearch-certutil cert --ca-cert ~/ca/ca/ca.crt --ca-key ~/ca/ca/ca.key --pem --in /etc/elasticsearch/instances.yml --out ~/certs.zip
 unzip ~/certs.zip -d ~/certs
-mkdir -p /etc/elasticsearch/certs/ca
-cp -R ~/certs/ca/ /etc/elasticsearch/certs/
-cp -R ~/certs/elasticsearch/* /etc/elasticsearch/certs/
+
+echo "Menyalin sertifikat ke direktori Elasticsearch..."
+mkdir -p /etc/elasticsearch/certs
+cp -R ~/ca/ca/ca.* /etc/elasticsearch/certs/
+cp -R ~/certs/* /etc/elasticsearch/certs/
 chown -R elasticsearch:elasticsearch /etc/elasticsearch/certs
 chmod -R 500 /etc/elasticsearch/certs
 
