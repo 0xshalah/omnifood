@@ -28,33 +28,46 @@ echo "Menginstal Elasticsearch versi 8.17.0..."
 apt-get install -y elasticsearch=8.17.0
 
 echo "Menyesuaikan konfigurasi Elasticsearch..."
-# Pastikan untuk tidak mengganti seluruh file konfigurasi
-# Tambahkan pengaturan yang diperlukan ke bagian bawah elasticsearch.yml
+# Tambahkan pengaturan yang diperlukan ke bagian bawah elasticsearch.yml dengan sintaksis YAML yang benar
 cat >> /etc/elasticsearch/elasticsearch.yml << EOF
 
-# Wazuh Elasticsearch configuration
+#################### Wazuh Elasticsearch Configuration ####################
+
 path.data: /var/lib/elasticsearch
 path.logs: /var/log/elasticsearch
 network.host: 0.0.0.0
+
 xpack.security.enabled: true
-xpack.security.transport.ssl.enabled: true
-xpack.security.transport.ssl.verification_mode: certificate
-xpack.security.transport.ssl.keystore.path: certs/elasticsearch/elasticsearch.p12
-xpack.security.transport.ssl.truststore.path: certs/elasticsearch/elasticsearch.p12
+
+xpack.security.transport.ssl:
+  enabled: true
+  verification_mode: certificate
+  key: /etc/elasticsearch/certs/elasticsearch/elasticsearch.key
+  certificate: /etc/elasticsearch/certs/elasticsearch/elasticsearch.crt
+  certificate_authorities: [ "/etc/elasticsearch/certs/ca/ca.crt" ]
+
+xpack.security.http.ssl:
+  enabled: true
+  key: /etc/elasticsearch/certs/elasticsearch/elasticsearch.key
+  certificate: /etc/elasticsearch/certs/elasticsearch/elasticsearch.crt
+  certificate_authorities: [ "/etc/elasticsearch/certs/ca/ca.crt" ]
+
 EOF
 
 echo "Membuat file instances.yml untuk sertifikat..."
 cat > /etc/elasticsearch/instances.yml << EOF
 instances:
   - name: 'elasticsearch'
+    dns:
+      - 'localhost'
     ip:
       - '127.0.0.1'
 EOF
 
 echo "Menghasilkan Certificate Authority (CA)..."
 cd /usr/share/elasticsearch/
-./bin/elasticsearch-certutil ca --pem --out /etc/elasticsearch/elastic-stack-ca.zip
-unzip /etc/elasticsearch/elastic-stack-ca.zip -d /etc/elasticsearch/certs
+./bin/elasticsearch-certutil ca --pem --out /etc/elasticsearch/certs/elastic-stack-ca.zip
+unzip /etc/elasticsearch/certs/elastic-stack-ca.zip -d /etc/elasticsearch/certs
 
 echo "Menghasilkan sertifikat menggunakan CA..."
 ./bin/elasticsearch-certutil cert --ca-cert /etc/elasticsearch/certs/ca/ca.crt --ca-key /etc/elasticsearch/certs/ca/ca.key --pem --in /etc/elasticsearch/instances.yml --out /etc/elasticsearch/certs/certs.zip
